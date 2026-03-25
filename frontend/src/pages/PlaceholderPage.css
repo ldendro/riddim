@@ -1,0 +1,37 @@
+/* ═══════════════════════════════════════════════════════════
+   Placeholder Page Styles (shared by Generate, Profile, Saved)
+   ═══════════════════════════════════════════════════════════ */
+
+.placeholder-page {
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.placeholder-page .empty-state {
+  padding: var(--space-2xl) var(--space-lg);
+}
+
+.phase-features {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin-top: var(--space-lg);
+  width: 100%;
+  max-width: 280px;
+}
+
+.phase-feature {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  background: rgba(0, 212, 255, 0.04);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.feature-icon {
+  font-size: 1rem;
+}

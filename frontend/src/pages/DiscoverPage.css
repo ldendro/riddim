@@ -1,0 +1,84 @@
+/* ═══════════════════════════════════════════════════════════
+   Discover Page Styles
+   ═══════════════════════════════════════════════════════════ */
+
+.discover-page {
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.discover-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+/* ── Track Counter ── */
+.track-counter {
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.counter-current {
+  color: var(--neon-cyan);
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.counter-sep {
+  margin: 0 4px;
+}
+
+/* ── Feedback Placeholder ── */
+.discover-feedback-placeholder {
+  text-align: center;
+  padding: var(--space-md) var(--space-lg);
+  border-style: dashed;
+}
+
+.placeholder-text {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+/* ── Nav ── */
+.discover-nav {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-md);
+}
+
+.discover-nav .btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* ── Loading ── */
+.discover-loading {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-3xl);
+}
+
+.loading-pulse {
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-full);
+  background: var(--gradient-primary);
+  animation: pulseGlow 1.5s ease-in-out infinite;
+  opacity: 0.5;
+}
+
+/* ── Setup Hint ── */
+.setup-hint {
+  display: inline-block;
+  margin-top: var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--bg-elevated);
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  color: var(--neon-cyan);
+  border: 1px solid var(--border-accent);
+}
