@@ -12,7 +12,7 @@
 
 | Channel | Source | Purpose |
 |---------|--------|---------|
-| **Discover** | FMA dataset (real tracks) | Ground truth taste learning |
+| **Discover** | NCS dataset (real tracks) | Ground truth taste learning |
 | **Generate** | MusicGen (AI-generated drops) | Preference-aligned generation |
 
 > **Core insight:** Riddim does not try to generate perfect music — it learns to *select* the right music by modeling user preference.
@@ -59,7 +59,7 @@ flowchart TD
     end
 
     subgraph Sources["🎶 Candidate Sources"]
-        FMA["FMA Dataset<br/>(Real EDM Tracks)"]
+        NCS["NCS Dataset<br/>(Real EDM Tracks)"]
         MG["MusicGen Pool<br/>(Pre-generated Drops)"]
     end
 
@@ -73,7 +73,7 @@ flowchart TD
     Feedback --> RM
     TM --> Rank
     RM --> Rank
-    FMA --> Rank
+    NCS --> Rank
     MG --> Rank
     Rank --> Serve
     Serve --> UI
@@ -136,7 +136,7 @@ riddim/
 │   │   └── database.py            # DB connection + query helpers
 │   └── config.py                  # Centralized configuration
 ├── data/
-│   ├── fma/                       # FMA dataset (gitignored)
+│   ├── ncs/                       # NCS dataset (gitignored)
 │   ├── generated/                 # MusicGen clips (gitignored)
 │   ├── embeddings/                # .npy embedding cache (gitignored)
 │   └── db/                        # SQLite database file (gitignored)
@@ -234,12 +234,12 @@ The UI is a **dark-mode, neon-accented single-page app** built with Vite + React
 
 ## 7. Data Preparation Pipeline
 
-### 7.1 FMA Preparation
+### 7.1 NCS Preparation
 
 ```mermaid
 flowchart LR
-    A["Download FMA-small"] --> B["Filter EDM genres"]
-    B --> C["Convert MP3 → WAV<br/>(16kHz mono)"]
+    A["Download NCS via yt-dlp"] --> B["Extract Metadata (Artist, Views)"]
+    B --> C["Convert to MP3 (UI) & WAV (Backend)"]
     C --> D["Extract librosa features"]
     D --> E["Compute CLAP embeddings"]
     E --> F["Insert into SQLite"]
@@ -247,9 +247,9 @@ flowchart LR
 
 #### Steps
 
-1. **Download** FMA-small dataset (~7.2 GB)
-2. **Load metadata** from `tracks.csv` — filter rows where `genre_top == 'Electronic'` or subgenres contain EDM-related terms
-3. **Convert audio** to WAV (16kHz, mono) using `pydub` or `ffmpeg`
+1. **Download** curated NCS videos using `ytsearch40` (~2 hours runtime)
+2. **Parse metadata** directly from the YouTube title/description avoiding API limits
+3. **Convert audio** to MP3 (for fast web streaming) and WAV 16kHz mono (for features)
 4. **Extract features** with `librosa` (see §8)
 5. **Compute embeddings** with CLAP (see §9)
 6. **Store** features, embeddings, and metadata in SQLite
@@ -339,7 +339,7 @@ class AudioFeatures:
     duration_sec: float
 ```
 
-All features are **z-score normalized** per-dataset (FMA and generated pools normalized independently).
+All features are **z-score normalized** per-dataset (NCS and generated pools normalized independently).
 
 ---
 
@@ -715,10 +715,10 @@ CREATE TABLE taste_profiles (
     updated_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Items (both FMA tracks and generated clips)
+-- Items (both NCS tracks and generated clips)
 CREATE TABLE items (
     id          TEXT PRIMARY KEY,
-    source      TEXT NOT NULL CHECK(source IN ('fma', 'generated')),
+    source      TEXT NOT NULL CHECK(source IN ('ncs', 'generated')),
     file_path   TEXT NOT NULL,
     genre       TEXT,
     metadata    JSON,       -- title, artist, prompt, etc.
@@ -868,7 +868,7 @@ Each user maintains:
 | Candidate pool | Per-user |
 | Feedback history | Per-user |
 | Saved collection | Per-user |
-| FMA dataset | Shared |
+| NCS dataset | Shared |
 | Feature/embedding cache | Shared |
 
 User isolation is achieved through `user_id` foreign keys in all feedback and pool tables.
@@ -881,14 +881,14 @@ User isolation is achieved through `user_id` foreign keys in all feedback and po
 
 > **Goal:** Skeleton project with data pipeline and basic audio playback
 
-- [ ] Initialize repo structure (frontend + backend)
-- [ ] FMA dataset download + EDM genre filtering
-- [ ] Audio conversion pipeline (MP3 → WAV)
-- [ ] librosa feature extraction (batch)
-- [ ] SQLite schema + seed data
-- [ ] Basic FastAPI server with health check
-- [ ] Vite + React scaffold with dark EDM theme
-- [ ] Basic audio player component
+- [x] Initialize repo structure (frontend + backend)
+- [x] NCS dataset download (yt-dlp) + EDM genre filtering
+- [x] Audio conversion pipeline (MP3 & WAV)
+- [x] librosa feature extraction (batch)
+- [x] SQLite schema + seed data
+- [x] Basic FastAPI server with health check
+- [x] Vite + React scaffold with dark EDM theme and ogl RippleGrid
+- [x] Basic audio player component
 
 ---
 
