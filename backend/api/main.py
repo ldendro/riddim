@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.config import FRONTEND_URL
 from backend.db.database import init_db
 from backend.api.routes.tracks import router as tracks_router
+from backend.api.routes.feedback import router as feedback_router
 
 
 @asynccontextmanager
@@ -39,6 +40,7 @@ app.add_middleware(
 
 # Routes
 app.include_router(tracks_router)
+app.include_router(feedback_router)
 
 
 @app.get("/api/health")

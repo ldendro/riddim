@@ -65,6 +65,13 @@ function AudioPlayer({ src, title, artist, genre, bpm, albumArt, popularity, yea
     wavesurferRef.current = ws;
 
     return () => {
+      try {
+        if (ws.isPlaying()) {
+          ws.pause();
+        }
+      } catch (e) {
+        // ignore
+      }
       ws.destroy();
     };
   }, [src, bpm, onEnded]);

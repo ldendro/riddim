@@ -31,17 +31,121 @@
   margin: 0 4px;
 }
 
-/* ── Feedback Placeholder ── */
-.discover-feedback-placeholder {
-  text-align: center;
-  padding: var(--space-md) var(--space-lg);
-  border-style: dashed;
+/* ── Feedback Bar ── */
+.discover-feedback-bar {
+  display: flex;
+  gap: var(--space-lg);
+  justify-content: center;
+  align-items: center;
+  padding: var(--space-xl);
+  border-radius: var(--radius-lg);
+  border-color: rgba(0, 212, 255, 0.2);
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
 }
 
-.placeholder-text {
-  color: var(--text-muted);
-  font-size: 0.9rem;
+.btn-reaction {
+  font-size: 1.8rem;
+  width: 60px;
+  height: 60px;
+  border-radius: var(--radius-full);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  position: relative;
 }
+
+.btn-reaction.love:hover {
+  border-color: #ff3366;
+  background: rgba(255, 51, 102, 0.1);
+  box-shadow: 0 0 20px rgba(255, 51, 102, 0.5);
+  transform: translateY(-4px) scale(1.05);
+}
+
+.btn-reaction.like:hover {
+  border-color: #00ff88;
+  background: rgba(0, 255, 136, 0.1);
+  box-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
+  transform: translateY(-4px) scale(1.05);
+}
+
+.btn-reaction.neutral:hover {
+  border-color: #ffcc00;
+  background: rgba(255, 204, 0, 0.1);
+  box-shadow: 0 0 20px rgba(255, 204, 0, 0.5);
+  transform: translateY(-4px) scale(1.05);
+}
+
+.btn-reaction.skip:hover {
+  border-color: #aaaaaa;
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+  transform: translateY(-4px) scale(1.05);
+}
+
+.btn-reaction.reject:hover {
+  border-color: #ff0000;
+  background: rgba(255, 0, 0, 0.1);
+  box-shadow: 0 0 20px rgba(255, 0, 0, 0.5);
+  transform: translateY(-4px) scale(1.05);
+}
+
+.btn-reaction:active {
+  transform: scale(0.9);
+}
+
+.btn-reaction svg {
+  transition: all 0.3s ease;
+  color: var(--text-secondary, #ccc);
+}
+
+.btn-reaction.love:hover, .btn-reaction.love.active { border-color: #ff3366; background: rgba(255, 51, 102, 0.1); box-shadow: 0 0 20px rgba(255, 51, 102, 0.5); }
+.btn-reaction.like:hover, .btn-reaction.like.active { border-color: #00ff88; background: rgba(0, 255, 136, 0.1); box-shadow: 0 0 20px rgba(0, 255, 136, 0.5); }
+.btn-reaction.neutral:hover, .btn-reaction.neutral.active { border-color: #ffcc00; background: rgba(255, 204, 0, 0.1); box-shadow: 0 0 20px rgba(255, 204, 0, 0.5); }
+.btn-reaction.skip:hover, .btn-reaction.skip.active { border-color: #aaaaaa; background: rgba(255, 255, 255, 0.05); box-shadow: 0 0 20px rgba(255, 255, 255, 0.1); }
+.btn-reaction.reject:hover, .btn-reaction.reject.active { border-color: #ff0000; background: rgba(255, 0, 0, 0.1); box-shadow: 0 0 20px rgba(255, 0, 0, 0.5); }
+.btn-reaction.previous:hover { border-color: var(--neon-cyan); background: rgba(0, 212, 255, 0.1); box-shadow: 0 0 20px rgba(0, 212, 255, 0.5); }
+
+.btn-reaction.love:hover svg, .btn-reaction.love.active svg { color: #ff3366; }
+.btn-reaction.like:hover svg, .btn-reaction.like.active svg { color: #00ff88; }
+.btn-reaction.neutral:hover svg, .btn-reaction.neutral.active svg { color: #ffcc00; }
+.btn-reaction.skip:hover svg, .btn-reaction.skip.active svg { color: #ffffff; }
+.btn-reaction.reject:hover svg, .btn-reaction.reject.active svg { color: #ff0000; }
+.btn-reaction.previous:hover svg { color: var(--neon-cyan); }
+
+/* Custom Tooltip */
+.btn-reaction::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  top: -40px;
+  left: 50%;
+  transform: translateX(-50%) translateY(10px);
+  background: var(--bg-elevated);
+  color: white;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+  white-space: nowrap;
+  pointer-events: none;
+  border: 1px solid var(--border-subtle);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+  z-index: 10;
+}
+
+.btn-reaction:hover::after {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}
+
 
 /* ── Nav ── */
 .discover-nav {

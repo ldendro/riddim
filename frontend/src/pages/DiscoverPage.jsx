@@ -4,11 +4,21 @@ import './DiscoverPage.css';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
+const Icons = {
+  Love: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>,
+  Like: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>,
+  Neutral: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>,
+  Skip: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 19 22 12 13 5 13 19"/><polygon points="2 19 11 12 2 5 2 19"/></svg>,
+  Previous: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 19 2 12 11 5 11 19"/><polygon points="22 19 13 12 22 5 22 19"/></svg>,
+  Reject: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+};
+
 function DiscoverPage() {
   const [tracks, setTracks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [userReactions, setUserReactions] = useState({});
 
   useEffect(() => {
     fetchTracks();
@@ -38,6 +48,40 @@ function DiscoverPage() {
       } catch { }
     }
     return meta;
+  };
+
+  const handleReaction = async (reaction) => {
+    // Optimistically update local active state
+    setUserReactions(prev => ({
+      ...prev,
+      [currentTrack.id]: reaction
+    }));
+    
+    try {
+      await fetch(`${API_BASE}/api/feedback/reaction`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          item_id: currentTrack.id,
+          reaction: reaction,
+          reason_tags: []
+        }),
+      });
+      // Move to next track
+      if (currentIndex < tracks.length - 1) {
+        setCurrentIndex(currentIndex + 1);
+      }
+    } catch (err) {
+      console.error("Failed to submit reaction", err);
+    }
+  };
+
+  const handlePrevious = () => {
+    if (currentIndex > 0) {
+      setCurrentIndex(currentIndex - 1);
+    }
   };
 
   if (loading) {
@@ -93,6 +137,7 @@ function DiscoverPage() {
         </div>
 
         <AudioPlayer
+          key={currentTrack.id}
           src={`${API_BASE}/api/tracks/${currentTrack.id}/audio`}
           title={meta.title || currentTrack.id}
           artist={meta.artist}
@@ -108,27 +153,31 @@ function DiscoverPage() {
           }}
         />
 
-        {/* Feedback buttons will be added in Phase 2 */}
-        <div className="discover-feedback-placeholder glass-card">
-          <p className="placeholder-text">
-            ❤️ 👍 😐 ⏭️ 🚫 — Feedback buttons coming in Phase 2
-          </p>
-        </div>
-
-        <div className="discover-nav">
-          <button
-            className="btn btn-primary"
-            onClick={() => setCurrentIndex(Math.max(0, currentIndex - 1))}
+        <div className="discover-feedback-bar glass-card">
+          <button 
+            className="btn-reaction previous" 
+            onClick={handlePrevious} 
             disabled={currentIndex === 0}
+            data-tooltip="Previous Track"
+            style={{ opacity: currentIndex === 0 ? 0.3 : 1, cursor: currentIndex === 0 ? 'not-allowed' : 'pointer' }}
           >
-            ← Previous
+            <Icons.Previous />
           </button>
-          <button
-            className="btn btn-primary"
-            onClick={() => setCurrentIndex(Math.min(tracks.length - 1, currentIndex + 1))}
-            disabled={currentIndex === tracks.length - 1}
-          >
-            Next →
+          
+          <button className={`btn-reaction love ${userReactions[currentTrack.id] === 'love' ? 'active' : ''}`} onClick={() => handleReaction('love')} data-tooltip="Love / Banger">
+            <Icons.Love />
+          </button>
+          <button className={`btn-reaction like ${userReactions[currentTrack.id] === 'like' ? 'active' : ''}`} onClick={() => handleReaction('like')} data-tooltip="Like">
+            <Icons.Like />
+          </button>
+          <button className={`btn-reaction neutral ${userReactions[currentTrack.id] === 'neutral' ? 'active' : ''}`} onClick={() => handleReaction('neutral')} data-tooltip="Neutral">
+            <Icons.Neutral />
+          </button>
+          <button className={`btn-reaction reject ${userReactions[currentTrack.id] === 'reject' ? 'active' : ''}`} onClick={() => handleReaction('reject')} data-tooltip="Not My Sound">
+            <Icons.Reject />
+          </button>
+          <button className={`btn-reaction skip ${userReactions[currentTrack.id] === 'skip' ? 'active' : ''}`} onClick={() => handleReaction('skip')} data-tooltip="Skip">
+            <Icons.Skip />
           </button>
         </div>
       </div>
