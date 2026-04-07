@@ -20,8 +20,11 @@ data/db/
 # Environment
 .env
 .env.local
+<<<<<<< HEAD
 .cache
 *.log
+=======
+>>>>>>> b49329b382f888c35451f2b08cf9db6dd7d44c73
 
 # IDE
 .vscode/

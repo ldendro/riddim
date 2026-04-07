@@ -35,7 +35,7 @@ function DiscoverPage() {
     if (track?.metadata) {
       try {
         meta = typeof track.metadata === 'string' ? JSON.parse(track.metadata) : track.metadata;
-      } catch {}
+      } catch { }
     }
     return meta;
   };

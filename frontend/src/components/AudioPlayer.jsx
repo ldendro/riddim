@@ -40,8 +40,8 @@ function AudioPlayer({ src, title, artist, genre, bpm, albumArt, popularity, yea
       if (bpm) {
         const bps = bpm / 60;
         const beatPhase = (time * bps) % 1;
-        const pulse = Math.pow(1 - beatPhase, 4); 
-        window.dispatchEvent(new CustomEvent('riddim-beat', { detail: { pulse, isPlaying: true }}));
+        const pulse = Math.pow(1 - beatPhase, 4);
+        window.dispatchEvent(new CustomEvent('riddim-beat', { detail: { pulse, isPlaying: true } }));
       }
     });
 
@@ -59,7 +59,7 @@ function AudioPlayer({ src, title, artist, genre, bpm, albumArt, popularity, yea
     });
     ws.on('pause', () => {
       setIsPlaying(false);
-      window.dispatchEvent(new CustomEvent('riddim-beat', { detail: { pulse: 0, isPlaying: false }}));
+      window.dispatchEvent(new CustomEvent('riddim-beat', { detail: { pulse: 0, isPlaying: false } }));
     });
 
     wavesurferRef.current = ws;
