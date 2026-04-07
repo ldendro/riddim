@@ -67,7 +67,7 @@ function AudioPlayer({ src, title, artist, genre, bpm, albumArt, popularity, yea
     return () => {
       ws.destroy();
     };
-  }, [src]);
+  }, [src, bpm, onEnded]);
 
   const togglePlay = () => {
     if (wavesurferRef.current) {

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import AudioPlayer from '../components/AudioPlayer';
 import './DiscoverPage.css';
 
-const API_BASE = 'http://localhost:8000';
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 function DiscoverPage() {
   const [tracks, setTracks] = useState([]);

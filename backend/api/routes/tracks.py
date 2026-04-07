@@ -15,7 +15,7 @@ router = APIRouter(prefix="/api/tracks", tags=["tracks"])
 
 
 @router.get("")
-async def list_tracks(
+def list_tracks(
     source: str | None = Query(None, description="Filter by source: 'ncs' or 'generated'"),
     genre: str | None = Query(None, description="Filter by genre"),
     limit: int = Query(20, ge=1, le=100),
@@ -62,7 +62,7 @@ async def list_tracks(
 
 
 @router.get("/{track_id}")
-async def get_track(track_id: str):
+def get_track(track_id: str):
     """Get a single track by ID."""
     track = query_one(
         """
@@ -81,7 +81,7 @@ async def get_track(track_id: str):
 
 
 @router.get("/{track_id}/audio")
-async def stream_audio(track_id: str):
+def stream_audio(track_id: str):
     """Stream audio file for a track."""
     track = query_one("SELECT file_path FROM items WHERE id = ?", (track_id,))
     if not track:
