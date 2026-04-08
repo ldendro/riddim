@@ -29,13 +29,12 @@ def _resolve_wav_path(item: dict) -> Path | None:
     """
     file_path = Path(item["file_path"])
 
-    # If it's already a WAV, use it directly
+    # If it's already a WAV, use it directly (Generated/Replicate drops)
     if file_path.suffix == ".wav" and file_path.exists():
         return file_path
 
-    # For MP3s (NCS), look for the WAV counterpart
+    # For MP3s (NCS), we know we have converted them into WAV in data/ncs/wav/
     if file_path.suffix == ".mp3":
-        # Try NCS WAV directory
         wav_path = DATA_DIR / "ncs" / "wav" / f"{file_path.stem}.wav"
         if wav_path.exists():
             return wav_path
