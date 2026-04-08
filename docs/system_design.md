@@ -216,19 +216,19 @@ The UI is a **dark-mode, neon-accented single-page app** built with Vite + React
 
 ### 6.3 Data Sources
 
-#### A. FMA (Free Music Archive) — Real Music
+#### A. NCS (NoCopyrightSounds) — Real Music
 
-- **Dataset:** [FMA-small](https://github.com/mdeff/fma) (8,000 tracks, 30s clips, ~7.2 GB)
-- **Filter:** Electronic / EDM genres only
-- **Expected yield:** ~800–1,200 usable tracks after genre filtering
-- **Format:** MP3 → convert to WAV (16kHz mono) for feature extraction
+- **Dataset:** Curated YouTube playlist fetching
+- **Filter:** High-quality Electronic / EDM genres
+- **Acquisition:** Download via `yt-dlp` in `mp3` format
+- **Format:** MP3 → converted to WAV (16kHz mono) for feature extraction
 
 #### B. MusicGen — AI-Generated Drops
 
-- **Model:** `facebook/musicgen-medium` (~1.5B params)
-- **Runtime:** Apple Silicon MPS (offline batch generation)
-- **Clip length:** 5–8 seconds
-- **Strategy:** Pre-generated candidate pool (no real-time generation)
+- **Model:** `meta/musicgen` (Large)
+- **Runtime:** Replicate API (Cloud GPUs)
+- **Clip length:** ~15 seconds
+- **Strategy:** On-demand generation triggered directly from the Web UI
 
 ---
 

@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS taste_profiles (
 -- Items (both FMA tracks and generated clips)
 CREATE TABLE IF NOT EXISTS items (
     id          TEXT PRIMARY KEY,
-    source      TEXT NOT NULL CHECK(source IN ('fma', 'generated', 'ncs', 'spotify')),
+    source      TEXT NOT NULL CHECK(source IN ('generated', 'ncs')),
     file_path   TEXT NOT NULL,
     genre       TEXT,
     metadata    JSON,       -- title, artist, prompt, etc.

@@ -99,37 +99,6 @@ REWARD_WEIGHT = 0.6
 TASTE_WEIGHT = 0.4
 
 # ──────────────────────────────────────────────
-# Candidate Pool
-# ──────────────────────────────────────────────
-INITIAL_POOL_SIZE = 100
-MIN_POOL_SIZE = 40
-REFRESH_BATCH_SIZE = 20
-PRUNE_SCORE_THRESHOLD = 0.2
-
-# ──────────────────────────────────────────────
-# CLAP Embeddings
-# ──────────────────────────────────────────────
-CLAP_EMBEDDING_DIM = 512
-
-# ──────────────────────────────────────────────
-# Feedback Signal Values
-# ──────────────────────────────────────────────
-REACTION_VALUES = {
-    "love": 1.0,
-    "like": 0.5,
-    "neutral": 0.0,
-    "skip": -0.5,
-    "reject": -1.0,
-    "save": 1.5,
-}
-
-REASON_TAGS = [
-    "too_slow", "too_fast", "too_dark", "too_bright",
-    "weak_bass", "too_heavy", "wrong_vibe", "too_repetitive",
-    "not_enough_melody", "too_simple", "too_complex",
-]
-
-# ──────────────────────────────────────────────
 # Server
 # ──────────────────────────────────────────────
 API_HOST = os.getenv("RIDDIM_HOST", "0.0.0.0")
