@@ -3,9 +3,13 @@
 
 -- Users
 CREATE TABLE IF NOT EXISTS users (
-    id          TEXT PRIMARY KEY,
-    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    onboarding  JSON  -- serialized onboarding preferences
+    id              TEXT PRIMARY KEY,
+    email           TEXT UNIQUE NOT NULL,
+    password_hash   TEXT NOT NULL,
+    display_name    TEXT NOT NULL,
+    onboarding_complete  INTEGER DEFAULT 0,
+    onboarding      JSON,  -- serialized onboarding preferences
+    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Taste profiles (one per user, updated in place)
@@ -19,7 +23,7 @@ CREATE TABLE IF NOT EXISTS taste_profiles (
     updated_at             TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Items (both FMA tracks and generated clips)
+-- Items (both NCS tracks and generated clips)
 CREATE TABLE IF NOT EXISTS items (
     id          TEXT PRIMARY KEY,
     source      TEXT NOT NULL CHECK(source IN ('generated', 'ncs')),
@@ -84,4 +88,14 @@ CREATE TABLE IF NOT EXISTS saved_tracks (
     item_id     TEXT REFERENCES items(id),
     saved_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (user_id, item_id)
+);
+
+-- Studio chat history
+CREATE TABLE IF NOT EXISTS studio_chat_messages (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id     TEXT REFERENCES users(id),
+    role        TEXT NOT NULL CHECK(role IN ('user', 'dj')),
+    content     TEXT NOT NULL,
+    variants    JSON,
+    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

@@ -5,6 +5,7 @@ All constants from the system design doc live here.
 """
 
 import os
+import secrets
 from pathlib import Path
 
 # ──────────────────────────────────────────────
@@ -82,6 +83,16 @@ CHARACTERS = [
     "euphoric chords", "distorted wobble", "crisp percussion",
     "ethereal pads", "aggressive leads", "minimal groove",
 ]
+
+# ──────────────────────────────────────────────
+# Authentication (JWT + bcrypt)
+# ──────────────────────────────────────────────
+JWT_SECRET_KEY = os.getenv(
+    "RIDDIM_JWT_SECRET",
+    secrets.token_urlsafe(32),  # Auto-generate if not set
+)
+JWT_ALGORITHM = "HS256"
+JWT_EXPIRE_MINUTES = int(os.getenv("RIDDIM_JWT_EXPIRE_MINUTES", "1440"))  # 24 hours
 
 # ──────────────────────────────────────────────
 # Taste Model

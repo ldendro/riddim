@@ -2,4 +2,40 @@
    App-Level Styles
    ═══════════════════════════════════════════════════════════ */
 
-/* Additional app-level overrides if needed */
+/* Animated ambient gradient — sits behind RippleGrid for depth */
+.app-ambient {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: -2;
+  background:
+    radial-gradient(ellipse at 15% 25%, rgba(180, 77, 255, 0.14) 0%, transparent 50%),
+    radial-gradient(ellipse at 85% 15%, rgba(0, 212, 255, 0.12) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 85%, rgba(255, 0, 204, 0.10) 0%, transparent 50%),
+    radial-gradient(ellipse at 70% 55%, rgba(0, 180, 255, 0.06) 0%, transparent 40%);
+  animation: ambientDrift 18s ease-in-out infinite alternate;
+}
+
+@keyframes ambientDrift {
+  0% { transform: scale(1) translate(0, 0); opacity: 1; }
+  33% { transform: scale(1.04) translate(-1.5%, 1%); opacity: 0.9; }
+  66% { transform: scale(1.02) translate(1%, -0.5%); opacity: 1; }
+  100% { transform: scale(1) translate(-0.5%, -1%); opacity: 0.95; }
+}
+
+/* Full-screen drop flash — festival stage burst */
+.drop-flash {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 90;
+  transition: opacity 0.4s ease-out, transform 0.4s ease-out;
+  will-change: opacity, transform;
+  mix-blend-mode: screen;
+}

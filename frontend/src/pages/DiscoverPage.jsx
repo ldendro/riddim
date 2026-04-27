@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { useAuth } from '../context/AuthContext';
+import { useDJ } from '../context/DJContext';
 import AudioPlayer from '../components/AudioPlayer';
 import './DiscoverPage.css';
 
@@ -14,20 +16,31 @@ const Icons = {
 };
 
 function DiscoverPage() {
+  const { token } = useAuth();
+  const { triggerDJComment } = useDJ();
   const [tracks, setTracks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [userReactions, setUserReactions] = useState({});
+  const [mode, setMode] = useState('explore');
+
+  useEffect(() => {
+    fetchMyReactions();
+  }, []);
 
   useEffect(() => {
     fetchTracks();
-  }, []);
+  }, [mode]);
 
   const fetchTracks = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${API_BASE}/api/tracks?source=ncs&limit=50`);
+      setCurrentIndex(0);
+      const res = await fetch(
+        `${API_BASE}/api/tracks/discover?mode=${mode}&limit=50`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
       if (!res.ok) throw new Error('Failed to fetch tracks');
       const data = await res.json();
       setTracks(data.tracks || []);
@@ -35,6 +48,20 @@ function DiscoverPage() {
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchMyReactions = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/feedback/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setUserReactions(data.reactions || {});
+      }
+    } catch (err) {
+      console.error('Failed to fetch prior reactions:', err);
     }
   };
 
@@ -62,6 +89,7 @@ function DiscoverPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           item_id: currentTrack.id,
@@ -69,6 +97,22 @@ function DiscoverPage() {
           reason_tags: []
         }),
       });
+
+      // Trigger DJ Byte commentary
+      const meta = parseMetadata(currentTrack);
+      triggerDJComment({
+        event_type: 'reaction',
+        reaction: reaction,
+        track_id: currentTrack.id,
+        track_title: `${meta.artist || 'Unknown'} - ${meta.title || currentTrack.id}`,
+        track_features: {
+          bpm: currentTrack.bpm,
+          energy_rms: currentTrack.energy_rms,
+          bass_energy: currentTrack.bass_energy,
+          genre: meta.genre || currentTrack.genre || 'EDM',
+        },
+      });
+
       // Move to next track
       if (currentIndex < tracks.length - 1) {
         setCurrentIndex(currentIndex + 1);
@@ -126,7 +170,30 @@ function DiscoverPage() {
     <div className="discover-page animate-fade-in">
       <div className="page-header">
         <h1><span className="text-gradient">Discover</span></h1>
-        <p>Browse real EDM tracks and tell us what you think</p>
+        <p>{mode === 'tailored' ? 'Tracks picked for your taste' : 'Browse real EDM tracks and tell us what you think'}</p>
+      </div>
+
+      {/* Mode Toggle */}
+      <div className="discover-mode-toggle">
+        <button
+          className={`mode-tab ${mode === 'explore' ? 'active' : ''}`}
+          onClick={() => setMode('explore')}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" /></svg>
+          Explore
+        </button>
+        <button
+          className={`mode-tab ${mode === 'tailored' ? 'active' : ''}`}
+          onClick={() => setMode('tailored')}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>
+          Tailored
+        </button>
+        {mode === 'explore' && (
+          <button className="shuffle-btn" onClick={fetchTracks} title="Shuffle">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 3 21 3 21 8" /><line x1="4" y1="20" x2="21" y2="3" /><polyline points="21 16 21 21 16 21" /><line x1="15" y1="15" x2="21" y2="21" /><line x1="4" y1="4" x2="9" y2="9" /></svg>
+          </button>
+        )}
       </div>
 
       <div className="discover-content">
@@ -138,6 +205,7 @@ function DiscoverPage() {
 
         <AudioPlayer
           key={currentTrack.id}
+          trackId={currentTrack.id}
           src={`${API_BASE}/api/tracks/${currentTrack.id}/audio`}
           title={meta.title || currentTrack.id}
           artist={meta.artist}
