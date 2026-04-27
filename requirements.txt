@@ -11,6 +11,13 @@ scipy>=1.12.0
 pydub>=0.25.1
 soundfile>=0.12.1
 
+# Authentication
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+
+# DJ Commentary Engine
+ollama>=0.4.0
+
 # Data
 pandas>=2.2.0
 requests>=2.31.0

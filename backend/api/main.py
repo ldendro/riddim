@@ -14,6 +14,10 @@ from backend.db.database import init_db
 from backend.api.routes.tracks import router as tracks_router
 from backend.api.routes.feedback import router as feedback_router
 from backend.api.routes.generate import router as generate_router
+from backend.api.routes.auth import router as auth_router
+from backend.api.routes.onboarding import router as onboarding_router
+from backend.api.routes.dj import router as dj_router
+from backend.api.routes.tastemap import router as tastemap_router
 
 
 @asynccontextmanager
@@ -26,7 +30,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Riddim",
     description="A human-in-the-loop AI system that learns your EDM taste",
-    version="0.1.0",
+    version="0.2.0",
     lifespan=lifespan,
 )
 
@@ -40,9 +44,13 @@ app.add_middleware(
 )
 
 # Routes
+app.include_router(auth_router)
+app.include_router(onboarding_router)
 app.include_router(tracks_router)
 app.include_router(feedback_router)
 app.include_router(generate_router)
+app.include_router(dj_router)
+app.include_router(tastemap_router)
 
 
 @app.get("/api/health")

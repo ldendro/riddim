@@ -1,122 +1,118 @@
 """
-Riddim — Generate Routes
+Riddim — Generate (Studio Chat) Routes
 
-Endpoints for fetching A/B candidate pairs.
+Endpoints for interacting with DJ Byte to develop AI music prompts.
 """
-import json
-import uuid
-from pathlib import Path
-from fastapi import APIRouter, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from backend.db.database import query_all, get_db
-from backend.pipeline.replicate_client import replicate_client
-from backend.models.feature_extractor import extract_features
-from backend.config import DATA_DIR
+from backend.api.deps import get_current_user
+from backend.db.database import query_all
+from backend.models.dj_engine import dj_engine
 import logging
-import asyncio
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/generate", tags=["generate"])
 
-class GenerateRequest(BaseModel):
-    user_id: str
-    custom_prompt: str | None = None
+class ChatMessage(BaseModel):
+    message: str
+    num_ctx: int = 1024
+    num_predict: int = 350
+    depth: str = "balanced"
+    include_taste: bool = True
 
-@router.get("/pair")
-async def get_generate_pair():
-    """Get a random pair of tracks to simulate A/B candidate drops."""
-    # Temporarily pick 2 random items (acting as generator drops)
-    sql = """
-        SELECT i.id, i.source, i.file_path, i.genre, i.metadata,
-               f.bpm, f.energy_rms, f.bass_energy, f.spectral_centroid,
-               f.onset_density, f.duration_sec
-        FROM items i
-        LEFT JOIN features f ON i.id = f.item_id
-        WHERE i.source = 'generated'
-        ORDER BY RANDOM()
-        LIMIT 2
-    """
-    pair = query_all(sql)
-    if len(pair) < 2:
-        raise HTTPException(status_code=404, detail="Not enough tracks to form a pair")
+@router.get("/session")
+async def get_chat_session(current_user: dict = Depends(get_current_user)):
+    """Initialize or retrieve the current Studio Chat session."""
+    from backend.db.database import query_all
+    import json
     
+    user_id = current_user["user_id"]
+    query = "SELECT role, content, variants FROM studio_chat_messages WHERE user_id = ? ORDER BY created_at ASC"
+    messages = query_all(query, (user_id,))
+    
+    formatted_history = []
+    for msg in messages:
+        variants_data = json.loads(msg["variants"]) if msg["variants"] else None
+        prompt = None
+        if variants_data:
+            prompt = variants_data.get("prompt", variants_data.get("A", None))
+        formatted_history.append({
+            "sender": msg["role"],
+            "text": msg["content"],
+            "type": "bot" if msg["role"] == "dj" else "user",
+            "prompt": prompt
+        })
+        
     return {
-        "clipA": pair[0],
-        "clipB": pair[1]
+        "status": "ready",
+        "history": formatted_history
     }
 
-@router.post("/replicate")
-async def generate_replicate_music(req: GenerateRequest):
-    """Generates two tracks using Replicate MusicGen-Large and returns them as an A/B pair."""
-    # 1. Construct prompt
-    prompt = req.custom_prompt or "Electronic EDM banger drop, heavy bass, energetic"
+@router.post("/chat")
+async def studio_chat(
+    msg: ChatMessage,
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Primary endpoint for DJ Byte Studio interaction.
+    Accepts user input, processes against taste profile, and returns prompt suggestions.
+    """
+    # TODO: Integration with LLM (DJ Byte) and taste profile cross-referencing
+    logger.info(f"Studio chat from {current_user['user_id']}: {msg.message}")
+    user_id = current_user["user_id"]
+    from backend.db.database import get_db
+    import json
     
-    # 2. Call Replicate in Parallel (this handles Mock fallback)
-    logger.info(f"Triggering Replicate with prompt: {prompt}")
-    
-    # We trigger two generations in parallel to cut wait time in half
-    try:
-        # Note: we use asyncio.to_thread because the replicate client is blocking
-        task1 = asyncio.to_thread(replicate_client.generate_music_single, prompt=prompt, duration=15)
-        task2 = asyncio.to_thread(replicate_client.generate_music_single, prompt=prompt, duration=15)
-        clips = await asyncio.gather(task1, task2)
-    except Exception as e:
-        logger.error(f"Generation failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Generation failed: {str(e)}")
-    
-    if not clips or any(c is None for c in clips):
-        raise HTTPException(status_code=500, detail="Replicate generation failed to return clips.")
-
-    # 3. Download and Extract Features
-    out_dir = Path("data/generated/wav")
-    out_dir.mkdir(parents=True, exist_ok=True)
-    
-    saved_clips = []
-    
-    # Batch items into one DB transaction for efficiency
+    # 0. Save User Message
     with get_db() as conn:
-        for i, clip in enumerate(clips):
-            track_id = f"gen_{clip['id'][:8]}"
-            file_path = out_dir / f"{track_id}.wav"
-            
-            # Download
-            replicate_client.download_audio(clip.get("audio_url", ""), file_path)
-            
-            metadata = {
-                "prompt": prompt,
-                "title": clip.get("title", f"Variation {i+1}"),
-                "model": "musicgen-large",
-                "tags": clip.get("metadata", {}).get("tags", "EDM")
-            }
-            
-            # Insert item
-            conn.execute(
-                "INSERT OR REPLACE INTO items (id, source, file_path, genre, metadata) VALUES (?, ?, ?, ?, ?)",
-                (track_id, "generated", str(file_path), "EDM", json.dumps(metadata))
+        conn.execute("INSERT INTO studio_chat_messages (user_id, role, content) VALUES (?, ?, ?)",
+                     (user_id, "user", msg.message))
+    
+    # 1. Gather Taste Context (only if user wants it)
+    taste_context = {}
+    if msg.include_taste:
+        reactions = query_all("SELECT item_id, reaction FROM reactions WHERE user_id = ?", (user_id,))
+        liked = [r for r in reactions if r["reaction"] in ["love", "like"]]
+        
+        if liked:
+            item_ids = [r["item_id"] for r in liked]
+            placeholders = ",".join("?" * len(item_ids))
+            tracks = query_all(
+                f"SELECT i.genre, f.bpm, f.energy_rms FROM items i JOIN features f ON i.id = f.item_id WHERE i.id IN ({placeholders})",
+                tuple(item_ids)
             )
-            
-            # Extract and Insert features
-            features = extract_features(file_path, track_id)
-            if features:
-                conn.execute(
-                    "INSERT OR REPLACE INTO features (item_id, bpm, energy_rms, bass_energy, spectral_centroid, onset_density, duration_sec) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                    (track_id, features.bpm, features.energy_rms, features.bass_energy, features.spectral_centroid, features.onset_density, features.duration_sec),
-                )
-        
-        # We don't need conn.commit() here because get_db() context manager handles it on exit
-        
-    # Query back outside the loop
-    for clip in clips:
-        track_id = f"gen_{clip['id'][:8]}"
-        rec = query_all("SELECT i.*, f.bpm, f.energy_rms, f.bass_energy, f.spectral_centroid, f.onset_density, f.duration_sec FROM items i LEFT JOIN features f ON i.id = f.item_id WHERE i.id = ?", (track_id,))
-        if rec:
-            saved_clips.append(rec[0])
+            if tracks:
+                avg_bpm = sum((float(t.get("bpm") or 128) for t in tracks)) / len(tracks)
+                avg_energy = sum((float(t.get("energy_rms") or 0.5) for t in tracks)) / len(tracks)
+                genres = {}
+                for t in tracks:
+                    g = t.get("genre", "electronic").lower()
+                    genres[g] = genres.get(g, 0) + 1
+                top_genres = sorted(genres.items(), key=lambda x: x[1], reverse=True)[:3]
+                taste_context = {
+                    "bpm": avg_bpm,
+                    "energy_rms": avg_energy,
+                    "genres": ", ".join([g[0] for g in top_genres])
+                }
 
-    if len(saved_clips) < 2:
-        raise HTTPException(status_code=500, detail="Failed to retrieve generated clips from database.")
-        
+    # 2. Query DJ Engine for prompt (with user-controlled depth)
+    result = await dj_engine.generate_studio_prompts(
+        msg.message, taste_context, 
+        num_ctx=msg.num_ctx, num_predict=msg.num_predict,
+        depth=msg.depth
+    )
+    logger.info(f"LLM result keys: {list(result.keys())}")
+    
+    response_text = str(result.get("intro", "Here's your generated prompt!"))
+    prompt_text = str(result.get("prompt", ""))
+    
+    # 3. Save DJ Response
+    with get_db() as conn:
+        conn.execute("INSERT INTO studio_chat_messages (user_id, role, content, variants) VALUES (?, ?, ?, ?)",
+                     (user_id, "dj", response_text, json.dumps({"prompt": prompt_text})))
+    
     return {
-        "clipA": saved_clips[0],
-        "clipB": saved_clips[1]
+        "response": response_text,
+        "prompt": prompt_text
     }

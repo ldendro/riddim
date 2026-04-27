@@ -1,5 +1,6 @@
 import { useRef, useEffect } from 'react';
 import { Renderer, Program, Triangle, Mesh } from 'ogl';
+import { useDJ } from '../context/DJContext';
 import './RippleGrid.css';
 
 const RippleGrid = ({
@@ -9,18 +10,26 @@ const RippleGrid = ({
   gridSize = 10.0,
   gridThickness = 15.0,
   fadeDistance = 1.5,
-  vignetteStrength = 2.0,
   glowIntensity = 0.1,
   opacity = 1.0,
   gridRotation = 0,
   mouseInteraction = true,
   mouseInteractionRadius = 1
 }) => {
+  const { isGenerating, isStudioLoading, isSpeaking } = useDJ();
   const containerRef = useRef(null);
   const mousePositionRef = useRef({ x: 0.5, y: 0.5 });
   const targetMouseRef = useRef({ x: 0.5, y: 0.5 });
   const mouseInfluenceRef = useRef(0);
   const uniformsRef = useRef(null);
+  const isGeneratingRef = useRef(isGenerating);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    
+    // Throttle WebGL during ANY LLM activity across all tabs
+    isGeneratingRef.current = isGenerating || isStudioLoading || isSpeaking;
+  }, [isGenerating, isStudioLoading, isSpeaking]);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -60,7 +69,6 @@ uniform float rippleIntensity;
 uniform float gridSize;
 uniform float gridThickness;
 uniform float fadeDistance;
-uniform float vignetteStrength;
 uniform float glowIntensity;
 uniform float opacity;
 uniform float gridRotation;
@@ -69,6 +77,8 @@ uniform vec2 mousePosition;
 uniform float mouseInfluence;
 uniform float mouseInteractionRadius;
 uniform float audioPulse;
+uniform float audioEnergy;
+uniform float dropFlash;
 uniform vec3 edgeWaveData;
 varying vec2 vUv;
 
@@ -90,7 +100,8 @@ void main() {
 
     float dist = length(uv);
     float func = sin(pi * (iTime - dist));
-    vec2 rippleUv = uv + uv * func * (rippleIntensity + audioPulse * 0.02);
+    float pulseBoost = audioPulse * 0.02 + audioEnergy * 0.012 + dropFlash * 0.06;
+    vec2 rippleUv = uv + uv * func * (rippleIntensity + pulseBoost);
 
     if (mouseInteraction && mouseInfluence > 0.0) {
         vec2 mouseUv = (mousePosition * 2.0 - 1.0);
@@ -135,7 +146,6 @@ void main() {
     }
 
     float ddd = 1.0;
-    float vignette = 1.0;
     
     vec3 t;
     if (enableRainbow) {
@@ -149,14 +159,31 @@ void main() {
     }
 
     vec3 mixedColor = t;
+
+    // Edge wave flash (existing ripple bursts)
     if (edgeWaveFlash > 0.0) {
         mixedColor = mix(t, vec3(1.0, 0.05, 0.6), clamp(edgeWaveFlash * 1.5, 0.0, 1.0));
         color += edgeWaveFlash * 1.5;
     }
-    
-    color += audioPulse * 0.15 * t;
 
-    float finalFade = ddd * vignette;
+    // Drop flash — festival stage lighting effect on the grid
+    if (dropFlash > 0.0) {
+        // Color shift toward hot magenta/white
+        vec3 flashColor = mix(vec3(1.0, 0.1, 0.7), vec3(1.0, 1.0, 1.0), dropFlash * 0.4);
+        mixedColor = mix(mixedColor, flashColor, dropFlash * 0.7);
+        // Brightness boost
+        color += dropFlash * 0.6 * flashColor;
+        // Radial burst — bright ring expanding from center
+        float burstRadius = (1.0 - dropFlash) * 4.0;
+        float burstRing = exp(-abs(dist - burstRadius) * 6.0) * dropFlash;
+        color += burstRing * 2.0 * flashColor;
+    }
+    
+    // Audio energy adds subtle glow
+    color += audioPulse * 0.15 * t;
+    color += audioEnergy * 0.08 * t;
+
+    float finalFade = ddd;
     float alpha = length(color) * finalFade * opacity;
     gl_FragColor = vec4(color * mixedColor * finalFade * opacity, alpha);
 }`;
@@ -170,7 +197,6 @@ void main() {
       gridSize: { value: gridSize },
       gridThickness: { value: gridThickness },
       fadeDistance: { value: fadeDistance },
-      vignetteStrength: { value: vignetteStrength },
       glowIntensity: { value: glowIntensity },
       opacity: { value: opacity },
       gridRotation: { value: gridRotation },
@@ -179,6 +205,8 @@ void main() {
       mouseInfluence: { value: 0 },
       mouseInteractionRadius: { value: mouseInteractionRadius },
       audioPulse: { value: 0 },
+      audioEnergy: { value: 0 },
+      dropFlash: { value: 0 },
       edgeWaveData: { value: [0, 0, 0] }
     };
 
@@ -223,19 +251,39 @@ void main() {
     resize();
 
     let currentAudioPulse = 0;
+    let currentAudioEnergy = 0;
+    let currentDropFlash = 0;
     let edgeWaveState = { x: 0, y: 0, active: 0 };
     let frameCount = 0;
 
     const handleBeat = (e) => {
       currentAudioPulse = e.detail.pulse || 0;
-      if (currentAudioPulse > 0.85 && Math.random() > 0.7 && edgeWaveState.active <= 0.0) {
+      // Only trigger BPM edge waves if no drop flash is active — drops take priority
+      if (currentDropFlash <= 0 && currentAudioPulse > 0.85 && Math.random() > 0.8 && edgeWaveState.active <= 0.0) {
          const edge = Math.floor(Math.random() * 4);
          edgeWaveState.x = edge === 0 ? Math.random() : edge === 1 ? Math.random() : edge === 2 ? 0 : 1;
          edgeWaveState.y = edge === 0 ? 0 : edge === 1 ? 1 : edge === 2 ? Math.random() : Math.random();
          edgeWaveState.active = 1.0;
       }
     };
+
+    const handleEnergy = (e) => {
+      currentAudioEnergy = e.detail.energy || 0;
+    };
+
+    const handleDrop = (e) => {
+      const intensity = e.detail?.intensity || 1;
+      currentDropFlash = Math.min(intensity, 1.5);
+      // Trigger ONE edge wave on drop for extra drama
+      const edge = Math.floor(Math.random() * 4);
+      edgeWaveState.x = edge === 0 ? Math.random() : edge === 1 ? Math.random() : edge === 2 ? 0 : 1;
+      edgeWaveState.y = edge === 0 ? 0 : edge === 1 ? 1 : edge === 2 ? Math.random() : Math.random();
+      edgeWaveState.active = 1.0;
+    };
+
     window.addEventListener('riddim-beat', handleBeat);
+    window.addEventListener('riddim-energy', handleEnergy);
+    window.addEventListener('riddim-drop', handleDrop);
 
     const render = t => {
       uniforms.iTime.value = t * 0.001;
@@ -251,12 +299,31 @@ void main() {
       uniforms.mousePosition.value = [mousePositionRef.current.x, mousePositionRef.current.y];
       
       uniforms.audioPulse.value = currentAudioPulse;
+      uniforms.audioEnergy.value += (currentAudioEnergy - uniforms.audioEnergy.value) * 0.15;
+      
+      // Drop flash decay
+      if (currentDropFlash > 0) {
+        currentDropFlash -= 0.018; // ~1 second for full decay
+        if (currentDropFlash < 0) currentDropFlash = 0;
+      }
+      uniforms.dropFlash.value = currentDropFlash;
+
       if (edgeWaveState.active > 0) {
-         edgeWaveState.active -= 0.012; // wave decay speed
+         edgeWaveState.active -= 0.012;
       }
       uniforms.edgeWaveData.value = [edgeWaveState.x, edgeWaveState.y, Math.max(0, edgeWaveState.active)];
 
+      // Skip heavy WebGL render if AI is actively generating text to save CPU
+      frameCount++;
+      if (isGeneratingRef.current) {
+        // Throttle to ~15fps during generation to free CPU for LLM
+        if (frameCount % 4 !== 0) {
+          animationFrameId = requestAnimationFrame(render);
+          return;
+        }
+      }
       renderer.render({ scene: mesh });
+      
       animationFrameId = requestAnimationFrame(render);
     };
 
@@ -266,6 +333,8 @@ void main() {
     return () => {
       window.removeEventListener('resize', resize);
       window.removeEventListener('riddim-beat', handleBeat);
+      window.removeEventListener('riddim-energy', handleEnergy);
+      window.removeEventListener('riddim-drop', handleDrop);
       if (mouseInteraction && container) {
         container.removeEventListener('mousemove', handleMouseMove);
         container.removeEventListener('mouseenter', handleMouseEnter);
@@ -296,7 +365,6 @@ void main() {
     uniformsRef.current.gridSize.value = gridSize;
     uniformsRef.current.gridThickness.value = gridThickness;
     uniformsRef.current.fadeDistance.value = fadeDistance;
-    uniformsRef.current.vignetteStrength.value = vignetteStrength;
     uniformsRef.current.glowIntensity.value = glowIntensity;
     uniformsRef.current.opacity.value = opacity;
     uniformsRef.current.gridRotation.value = gridRotation;
@@ -309,7 +377,6 @@ void main() {
     gridSize,
     gridThickness,
     fadeDistance,
-    vignetteStrength,
     glowIntensity,
     opacity,
     gridRotation,
